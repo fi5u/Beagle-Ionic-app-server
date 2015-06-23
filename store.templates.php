@@ -69,7 +69,7 @@ function update($template) {
     );
 
     if ($statement->execute()) {
-        $response['msg'] = 'Successfully updated id ' . $id;
+        $response['msg'] = 'Successfully updated id ' . $template->statSharedID;
     } else {
         $response['msg'] = 'Error: ('. $mysqli->errno .') '. $mysqli->error;
     }
