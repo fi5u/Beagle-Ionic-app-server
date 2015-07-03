@@ -2,15 +2,16 @@
 
 ini_set('display_errors', 1);
 
-$data = file_get_contents("php://input");
-$obj_data = json_decode($data);
+// Connect to mongodb
+$m = new MongoClient();
 
-include_once 'store.connect.credentials.php';
+// Select a database
+$db = $m->d24_search;
 
-$mysqli = new mysqli($host, $user, $pass, 'd24');
+// Set the collection
+$collection = $db->templates;
 
-if ($mysqli->connect_error) {
-    die('Connect Error (' . $mysqli->connect_errno . ') ' . $mysqli->connect_error);
-}
+//$input = file_get_contents("php://input");
+$input = '{"template":"www.amazon.co.uk/[?]/s?ie=UTF8&page=1&rh=i:aps,k:[?]","title":"Amazon.co.uk: Low Prices in Electronics, Books, Sports Equipment & more","space":"-","secure":"false","url":"www.amazon.co.uk","statSharedID":null}';
 
-$mysqli->set_charset('utf8');
+$data = json_decode($input);
