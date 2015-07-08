@@ -2,7 +2,7 @@
 
 include_once 'store.connect.php';
 
-$document = get_document($data);
+$document = get_document($collection, $data);
 
 if (is_null($document)) {
     // Insert document
@@ -21,7 +21,7 @@ if (is_null($document)) {
     }
 }
 
-function get_document($template) {
+function get_document($collection, $template) {
     $document = $collection->findOne(array('template' => $template->template));
     return $document;
 }
