@@ -12,6 +12,7 @@ $db = $m->d24_search;
 $collection = $db->templates;
 
 //$input = file_get_contents("php://input");
-$input = '{"template":"www.amazon.co.uk/[?]/s?ie=UTF8&page=1&rh=i:aps,k:[?]","title":"Amazon.co.uk: Low Prices in Electronics, Books, Sports Equipment & more","space":"-","secure":"false","url":"www.amazon.co.uk","statSharedID":null}';
+$input = '{"template":"www.amazonZ.co.uk/[?]/s?ie=UTF8&page=1&rh=i:aps,k:[?]","title":"Amazon.co.uk: Low Prices in Electronics, Books, Sports Equipment & more","space":"-","secure":"false","url":"www.amazon.co.uk","statSharedID":"55a1f7ec2e009e6e5f0041a8"}';
+//$input = '{"template":"www.ontrend.co.uk/[?]","title":"On Trend","space":"-","secure":"false","url":"www.ontrend.co.uk","statShared":false}';
 
 $data = json_decode($input);
