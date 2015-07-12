@@ -34,15 +34,16 @@ if (is_null($document)) {
             array('$set' => array('edits' => $document['edits']))
         );
     }
+    echo json_encode($document['_id']);
 }
 
 function get_document($collection, $template) {
-    if ($template->statSharedID !== false) {
-        // Is update
-        $document = $collection->findOne(array('_id' => new MongoId($template->statSharedID)));
-    } else {
+    if ($template->statSharedID === 'null') {
         // Is new
         $document = $collection->findOne(array('template' => $template->template));
+    } else {
+        // Is update
+        $document = $collection->findOne(array('_id' => new MongoId($template->statSharedID)));
     }
 
     return $document;
