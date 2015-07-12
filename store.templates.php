@@ -17,7 +17,7 @@ if (is_null($document)) {
     if ($document['template'] !== $data->template || $document['space'] !== $data->space) {
         $edit = array(
             'template'  => $data->template,
-            'timestamp' => date("Y-m-d H:i:s"),
+            'edited'    => date("Y-m-d H:i:s"),
             'reviewed'  => false
         );
 
@@ -50,6 +50,7 @@ function get_document($collection, $template) {
 
 function build_document($template) {
     $document = array(
+        'created'   => date("Y-m-d H:i:s"),
         'template'  => $template->template,
         'title'     => $template->title,
         'space'     => $template->space,
