@@ -11,26 +11,20 @@ if (is_null($document)) {
     echo json_encode($document['_id']);
 } else {
     // Update document
-    
-    // Check if url is already present
-    if (!in_array($data->url, $document['urls'])) {
-        // Add to array
-        $document['urls'][] = $data->url;
-        
-        // Update the document with new url
-        $updated = update_document(
-            $collection,
-            array('_id' => new MongoId($document['_id'])),
-            array('$set' => array('urls' => $document['urls']))
-        );
-    }
 
     // Has the template changed?
-    if ($document['template'] !== $data->template) {
+    // If the template and/or the space has changed, add to edits
+    if ($document['template'] !== $data->template || $document['space'] !== $data->space) {
         $edit = array(
             'template'  => $data->template,
             'timestamp' => date("Y-m-d H:i:s"),
+            'reviewed'  => false
         );
+
+        if ($document['space'] !== $data->space) {
+            $edit['space'] = $data->space;
+        }
+
         $document['edits'][] = $edit;
 
         // Update the document with new url
