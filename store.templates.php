@@ -58,7 +58,7 @@ function build_document($template) {
         'edits'     => array()
     );
 
-    if (isset($template->url)) {
+    if (isset($template->url) && !empty($template->url)) {
         $document['urls'][] = $template->url;
     }
     
