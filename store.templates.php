@@ -2,12 +2,16 @@
 
 include_once 'store.connect.php';
 $document = get_document($collection, $data);
+$rtnArray = array();
 
 if (is_null($document)) {
     // Insert document
     $document = build_document($data);
     $inserted = insert_document($collection, $document);
-    echo json_encode($document['_id']);
+
+    $rtnArray['saved'] = $inserted | false;
+    $rtnArray['id'] = $document['_id']->{'$id'};
+
 } else {
     // Update document
 
@@ -16,7 +20,7 @@ if (is_null($document)) {
     if ($document['template'] !== $data->template || $document['space'] !== $data->space) {
         $edit = array(
             'template'  => $data->template,
-            'edited'    => date("Y-m-d H:i:s"),
+            'edited'    => date('Y-m-d H:i:s'),
             'reviewed'  => false
         );
 
@@ -32,9 +36,17 @@ if (is_null($document)) {
             array('_id' => new MongoId($document['_id'])),
             array('$set' => array('edits' => $document['edits']))
         );
+
+        $rtnArray['saved'] = $updated | false;
+        $rtnArray['id'] = $document['_id']->{'$id'};
+    } else {
+        $rtnArray['saved']      = false;
+        $rtnArray['duplicate']  = true;
     }
-    echo json_encode($document['_id']);
 }
+
+echo json_encode($rtnArray);
+
 
 function get_document($collection, $template) {
     if (gettype($template->statSharedID === 'NULL')) {
