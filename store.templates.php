@@ -1,7 +1,6 @@
 <?php
 
 include_once 'store.connect.php';
-
 $document = get_document($collection, $data);
 
 if (is_null($document)) {
@@ -38,7 +37,7 @@ if (is_null($document)) {
 }
 
 function get_document($collection, $template) {
-    if ($template->statSharedID === 'null') {
+    if (gettype($template->statSharedID === 'NULL')) {
         // Is new
         $document = $collection->findOne(array('template' => $template->template));
     } else {
@@ -55,6 +54,7 @@ function build_document($template) {
         'template'  => $template->template,
         'title'     => $template->title,
         'space'     => $template->space,
+        'secure'    => $template->secure,
         'active'    => true,
         'urls'      => array(),
         'edits'     => array()
@@ -63,7 +63,7 @@ function build_document($template) {
     if (isset($template->url) && !empty($template->url)) {
         $document['urls'][] = $template->url;
     }
-    
+
     return $document;
 }
 

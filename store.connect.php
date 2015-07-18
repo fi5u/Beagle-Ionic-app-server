@@ -1,7 +1,5 @@
 <?php
 
-ini_set('display_errors', 1);
-
 // Connect to mongodb
 $m = new MongoClient();
 
@@ -12,6 +10,6 @@ $db = $m->d24_search;
 $collection = $db->templates;
 
 $input = file_get_contents('php://input');
-//$input = '{"template":"www.amazon.co.uk/[?]/s?ie=UTF8&page=1&rh=i:aps,k:[?]","title":"Amazon.co.uk: Low Prices in Electronics, Books, Sports Equipment & more","space":"-","secure":"false","url":"www.amazon.co.uk","statSharedID":"null"}';
+//$input = '{"template":"www.houseoffraser.co.uk/on/demandware.store/Sites-hof-Site/default/Search-Show?q=[?]","title":"House of Fraser™ | Clothes, Fashion, Beauty, Home & Electronics","space":"%20","secure":"false","url":"www.houseoffraser.co.uk","statSharedID":null}';
 
 $data = json_decode($input);

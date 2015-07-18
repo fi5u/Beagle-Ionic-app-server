@@ -1,4 +1,5 @@
 <?php
+ini_set('display_errors', 1);
 $s = file_get_contents(getcwd() . '/autotemplate.js');
 $temp_filename = tempnam(sys_get_temp_dir(), 'UPJSB');
 file_put_contents($temp_filename, $s);
