@@ -1,11 +1,12 @@
 var sys = require('system'),
     page = require('webpage').create(),
+    args = sys.args,
     redirectedUrl = '',
     url = {
-        original: 'http://www.espn.com',
+        original: args[1],
         redirected: ''
     },
-    terms = 'abc def',
+    terms = args[2] + ' ' + args[3],
     stage = {
         redirectCheck: false,
         searchSent: false,
@@ -14,6 +15,7 @@ var sys = require('system'),
     searchMethod = 'formSubmit';
 
 // Set useragent to iphone 6
+// in future pass actual device user agent here
 page.settings.userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 8_0_2 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Version/8.0 Mobile/12A366 Safari/600.1.4';
 
 function stripLastSlash(url) {
