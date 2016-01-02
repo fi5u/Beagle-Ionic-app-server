@@ -1,33 +1,185 @@
-// STATUS CODES
-// badurl:  URL not found
-// elnf:    Search input element not found
-// success: Returned a URL with search string successfully
-// badrtn:  Returned URL does not contain the search terms
-// ntwerr:  Network errors occurred when accessing the url
+var sys = require('system'),
+    page = require('webpage').create(),
+    args = sys.args,
+    redirectedUrl = '',
+    url = {
+        original: args[1],
+        redirected: ''
+    },
+    terms = args[2] + ' ' + args[3],
+    stage = {
+        redirectCheck: false,
+        searchSent: false,
+        resultsReturned: false
+    },
+    searchMethod = 'formSubmit';
 
-var page  = require('webpage').create(),
-    args = require('system').args,
-    pageTitle,
-    response = {},
-    timeoutDur = 3000;
+// Set useragent to iphone 6
+// in future pass actual device user agent here
+page.settings.userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 8_0_2 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Version/8.0 Mobile/12A366 Safari/600.1.4';
 
-var isDebug = false,
-    debug = {
-        getUrl: {
-            true: 'http://www.tfl.gov.uk',
-            false: args[1]
-        },
-        getWord1: {
-            true: 'kakku',
-            false: args[2]
-        },
-        getWord2: {
-            true: 'kasvis',
-            false: args[3]
+function stripLastSlash(url) {
+    return url.replace(/\/$/, '');
+}
+
+// Need to check jquery on every load - subsequent loads will not contain included jquery
+function checkJquery() {
+    if (hasJquery()) {
+        afterJquerySetup();
+    } else {
+        page.includeJs('http://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js', function() {
+            afterJquerySetup();
+        });
+    }
+}
+
+function hasJquery() {
+    var hasJquery = page.evaluate(function() {
+        return typeof jQuery !== 'undefined';
+    });
+    return hasJquery;
+}
+
+function afterJquerySetup() {
+    sendSearchRequest();
+}
+
+function sendSearchRequest() {
+    var sendSearchResults;
+    // jQuery is available
+    var sendSearch = page.evaluate(function(terms) {
+        var getEl,
+            getElNoForm,
+            $el;
+
+        // Get search box element
+        function getElement(parentEl) {
+            var textEl;
+
+            if (jQuery(parentEl + 'input[type="search"]').length) {
+                return {type: 'success', el: jQuery(parentEl + 'input[type="search"]').first()}
+            } else if (jQuery(parentEl + 'input[type="text"]').length) {
+                jQuery(parentEl + 'input[type="text"]').each(function() {
+                    var $self = jQuery(this);
+                    if (
+                        ($self.is('[title]') && ($self.attr('title').toLowerCase().indexOf('search') > -1 || $self.attr('title').toLowerCase().indexOf('query') > -1)) ||
+                        ($self.is('[id]') && ($self.attr('id').toLowerCase().indexOf('search') > -1 || $self.attr('id').toLowerCase().indexOf('query') > -1)) ||
+                        ($self.is('[name]') && ($self.attr('name').toLowerCase().indexOf('search') > -1 || $self.attr('name').toLowerCase().indexOf('query') > -1)) ||
+                        ($self.is('[placeholder]') && ($self.attr('placeholder').toLowerCase().indexOf('search') > -1 || $self.attr('placeholder').toLowerCase().indexOf('query') > -1)) ||
+                        $self.is('[class*=search]') || $self.is('[class*=Search]') || $self.is('[class*=SEARCH]') ||
+                        $self.is('[class*=query]') || $self.is('[class*=Query]') || $self.is('[class*=QUERY]')
+                    ) {
+                        textEl = $self;
+                        return false; // exit from the .each loop
+                    }
+                });
+
+                if (textEl) {
+                    return {type: 'success', el: textEl}
+                }
+                return {type: 'success', el: jQuery(parentEl + 'input[type="text"]').first()}
+            } else if (jQuery(parentEl + 'input').not('[type]').length) {
+                return {type: 'success', el: jQuery(parentEl + 'input').not('[type]').first()}
+            } else {
+                return {type: 'fail', status: 'elnf'};
+            }
         }
+
+        // Get an element with form as parent
+        getEl = getElement('form ');
+        if (getEl.type === 'success') {
+            $el = getEl.el;
+            $el.val(terms);
+            $el.closest('form').submit();
+        } else {
+            // Try to get element without a form parent
+            getElNoForm = getElement('');
+            if (getEl.type === 'success') {
+                $el = getElNoForm.el;
+                $el.val(terms);
+
+                // Find submit button
+                if ($('input[type="submit"]').length) {
+                    if ($('input[type="submit"]').length === 1) {
+                        $('input[type="submit"]').first().click();
+                        return true;
+                    } else {
+                        // If next element is input type submit
+                        if ($el.next('input[type="submit"]').length) {
+                            $el.next('input[type="submit"]').click();
+                            return true;
+                        } else {
+                            // Click the first input
+                            $('input[type="submit"]').first().click();
+                            return true;
+                        }
+                    }
+                } else {
+                    return JSON.stringify({type: 'fail', status: 'btnnf'});
+                }
+            } else {
+                return JSON.stringify(getElNoForm);
+            }
+        }
+
+        return true;
+    }, terms);
+
+    if (sendSearch !== true) {
+        sendSearchResults = JSON.parse(sendSearch);
+        phantomExit(sendSearchResults.status);
+    }
+
+    stage.searchSent = true;
+}
+
+function urlContainsSearchResults() {
+    if (page.url.indexOf(args[2]) > -1 && page.url.indexOf(args[3]) > -1) {
+        return true;
+    }
+    return false;
+}
+
+function phantomExit(statusCode) {
+    var response = {
+        status: statusCode,
+        url: page.url,
+        title: page.title,
+        redirectedUrl: url.redirected
     };
 
-var urlToTest = debug.getUrl[isDebug];
+    console.log(JSON.stringify(response, undefined, 0));
+    phantom.exit(1);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+page.onLoadFinished = function() {
+    if (stage.resultsReturned) {
+        if (urlContainsSearchResults()) {
+            phantomExit('success');
+            return false;
+        } else {
+            stage.resultsReturned = false;
+        }
+    }
+
+    if (!stage.redirectCheck) {
+        return false;
+    } else {
+        url.redirected = page.url;
+    }
+
+    checkJquery();
+
+    if (stage.searchSent) {
+        stage.resultsReturned = true;
+    }
+
+};
+
 
 page.onError = function(msg, trace) {
     var msgStack = ['ERROR: ' + msg];
@@ -41,194 +193,25 @@ page.onError = function(msg, trace) {
     //console.error(msgStack.join('\n'));
 };
 
-page.open(urlToTest, function(status) {
-    var searchTerms = [debug.getWord1[isDebug], debug.getWord2[isDebug]],
-        search = performSearch(searchTerms, 'closestForm');
+////////////////////////////////////////////////////////////////////////////////
 
+page.open(url.original, function(status) {
     if (status !== 'success') {
-        phantomExit('Unable to access network', 'badurl');
+        phantomExit('ntwerr');
     }
 
-    pageTitle = page.evaluate(function() {
-        return document.title;
-    });
+    // Wait for any redirects
+    setTimeout(function() {
+        stage.redirectCheck = true;
+        page.onLoadFinished();
+    }, 1500);
 
-    if (!search) {
-        buttonClick(searchTerms);
-    } else {
-        page.sendEvent('keypress', page.event.key.Enter);
-
-        setTimeout(function() {
-            // Try the search again by clicking the submit button
-            buttonClick(searchTerms);
-        }, timeoutDur);
-    }
-
-    page.onLoadFinished = function(status) { // Search result loaded
-        var newSearch;
-        if (status === 'success') {
-            if (page.url.indexOf(searchTerms[0]) > -1 && page.url.indexOf(searchTerms[1]) > -1) {
-                phantomExit('Query URL successfully returned', 'success');
-            } else {
-                page.onLoadFinished = function(status) {
-                    if (status === 'success') {
-                        if (page.url.indexOf(searchTerms[0]) > -1 && page.url.indexOf(searchTerms[1]) > -1) {
-                            phantomExit('Query URL successfully returned', 'success');
-                        } else {
-                            phantomExit('Template could not be generated', 'badrtn');
-                        }
-                    } else {
-                        if (page.url.indexOf(searchTerms[0]) > -1 && page.url.indexOf(searchTerms[1]) > -1) {
-                            phantomExit('Query URL successfully returned', 'success');
-                        } else {
-                            phantomExit('Template could not be generated', 'ntwerr');
-                        }
-                    }
-                };
-                // Try the search again by clicking the submit button
-                newSearch = performSearch(searchTerms, 'buttonClick');
-                if (!newSearch) {
-                    phantomExit('Search element not found3', 'elnf');
-                }
-            }
+    // Wait 10s and quit if still going
+    setTimeout(function() {
+        if (urlContainsSearchResults()) {
+            phantomExit('success');
         } else {
-            phantomExit('Network errors occurred', 'ntwerr');
+            phantomExit('timedout');
         }
-    };
-
-    function buttonClick(searchTerms) {
-        var newSearch = performSearch(searchTerms, 'buttonClick');
-        if (!newSearch) {
-            phantomExit('Search element not found2', 'elnf');
-        } else {
-            setTimeout(function() {
-                if (page.url.indexOf(searchTerms[0]) > -1 && page.url.indexOf(searchTerms[1]) > -1) {
-                    phantomExit('Query URL successfully returned', 'success');
-                } else {
-                    phantomExit('Template could not be generated', 'ntwerr');
-                }
-            }, timeoutDur);
-        }
-    }
-
-    function performSearch(searchTerms, submitType) {
-        var search = page.evaluate(function(searchTerms, searchSubmitType) {
-            var inputs = document.getElementsByTagName('input'),
-                searchElement,
-                checkElements,
-                closestForm,
-                submits,
-                i,
-                closest = function(el, selector) {
-                    var matchesFn;
-                    // find vendor prefix
-                    ['matches','webkitMatchesSelector','mozMatchesSelector','msMatchesSelector','oMatchesSelector'].some(function(fn) {
-                        if (typeof document.body[fn] == 'function') {
-                            matchesFn = fn;
-                            return true;
-                        }
-                        return false;
-                    });
-                    // traverse parents
-                    while (el!==null) {
-                        if (el.parentElement!==null && el.parentElement[matchesFn](selector)) {
-                            return el.parentElement;
-                        }
-                        el = el.parentElement;
-                    }
-                    return null;
-                };
-
-            for (i = 0; i < inputs.length; i++) {
-                if (inputs[i].type.toLowerCase() === 'search') {
-                    searchElement = inputs[i];
-                    break;
-                }
-                if (
-                    (inputs[i].title.toLowerCase().indexOf('search') > -1 ||
-                     inputs[i].title.toLowerCase().indexOf('query') > -1 ||
-                     inputs[i].id.toLowerCase().indexOf('search') > -1 ||
-                     inputs[i].id.toLowerCase().indexOf('query') > -1 ||
-                     inputs[i].className.toLowerCase().indexOf('search') > -1 ||
-                     inputs[i].className.toLowerCase().indexOf('query') > -1 ||
-                     (inputs[i].hasAttribute('name') && inputs[i].getAttribute('name').toLowerCase().indexOf('search') > -1) ||
-                     (inputs[i].hasAttribute('name') && inputs[i].getAttribute('name').toLowerCase().indexOf('query') > -1) ||
-                     (inputs[i].hasAttribute('placeholder') && inputs[i].getAttribute('placeholder').toLowerCase().indexOf('search') > -1) ||
-                     (inputs[i].hasAttribute('placeholder') && inputs[i].getAttribute('placeholder').toLowerCase().indexOf('query') > -1)
-                    ) && (inputs[i].type.toLowerCase() === 'text' || !inputs[i].hasAttribute('type'))
-                ) {
-                    searchElement = inputs[i];
-                    break;
-                }
-            }
-            if (!searchElement) {
-                // No search found yet, just get the first text box
-                searchElement = document.querySelectorAll('input[type="text"]')[0];
-            }
-            if (!searchElement) {
-                // If no text box then grab the first input that doesn't have a type
-                checkElements = document.querySelectorAll('input');
-                for (var i = checkElements.length - 1; i >= 0; i--) {
-                    if (!checkElements[i].hasAttribute('type')) {
-                        searchElement = checkElements[i];
-                        break;
-                    }
-                };
-            }
-            if (searchElement) {
-                // Fill in the input element
-                searchElement.value = searchTerms[0] + ' ' + searchTerms[1];
-
-                // Submit element's own form
-                closestForm = closest(searchElement, 'form');
-                if (searchSubmitType === 'closestForm') {
-                    // Sometimes this can just return the same page
-                    searchElement.focus();
-                } else {
-                    submits = document.querySelectorAll('[type="submit"]');
-                    if (submits.length === 1) {
-                        submits[0].click();
-                        return true;
-                    } else {
-                        for (i = 0; i < submits.length; i++) {
-                            if (closest(submits[i], 'form') === closestForm) {
-                                submits[i].click();
-                                return true;
-                            }
-                        }
-
-                        /* type=image can also be submit button */
-                        submits = document.querySelectorAll('[type="image"]');
-                        if (submits.length === 1) {
-                            submits[0].click();
-                            return true;
-                        } else {
-                            for (i = 0; i < submits.length; i++) {
-                                if (closest(submits[i], 'form') === closestForm) {
-                                    submits[i].click();
-                                    return true;
-                                }
-                            }
-                        }
-                        return false;
-                    }
-                }
-                return true;
-            }
-            return false;
-        }, searchTerms, submitType);
-
-        return search;
-    }
+    }, 10000);
 });
-
-function phantomExit(description, code) {
-    response.content = {
-        status: code,
-        url: page.url,
-        title: pageTitle
-    };
-
-    console.log(JSON.stringify(response.content, undefined, 0));
-    phantom.exit(1);
-}

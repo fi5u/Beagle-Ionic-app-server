@@ -4,7 +4,7 @@
 $m = new MongoClient();
 
 // Select a database
-$db = $m->d24_search;
+$db = $m->d24_beagle;
 
 // Set the collection
 $collection = $db->templates;
