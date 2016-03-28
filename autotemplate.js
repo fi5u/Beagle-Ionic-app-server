@@ -1,7 +1,6 @@
 var sys = require('system'),
     page = require('webpage').create(),
-    args = sys.args,
-    redirectedUrl = '',
+    args = sys.args, //['', 'http://www.sdksj.com', 'abc', 'def']
     url = {
         original: args[1],
         redirected: ''
@@ -11,8 +10,7 @@ var sys = require('system'),
         redirectCheck: false,
         searchSent: false,
         resultsReturned: false
-    },
-    searchMethod = 'formSubmit';
+    };
 
 // Set useragent to iphone 6
 // in future pass actual device user agent here
@@ -24,10 +22,19 @@ function stripLastSlash(url) {
 
 // Need to check jquery on every load - subsequent loads will not contain included jquery
 function checkJquery() {
+    var hasBody;
     if (hasJquery()) {
         afterJquerySetup();
     } else {
-        page.includeJs('http://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js', function() {
+        // Only attach jquery if both document and body are available
+        hasBody = page.evaluate(function() {
+            return !!document && !!document.getElementsByTagName("BODY")[0];
+        });
+        if (!hasBody) {
+            phantomExit('nobody');
+            return false;
+        }
+        page.includeJs('http://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js', function() {
             afterJquerySetup();
         });
     }
@@ -57,7 +64,7 @@ function sendSearchRequest() {
             var textEl;
 
             if (jQuery(parentEl + 'input[type="search"]').length) {
-                return {type: 'success', el: jQuery(parentEl + 'input[type="search"]').first()}
+                return {type: 'success', el: jQuery(parentEl + 'input[type="search"]').first()};
             } else if (jQuery(parentEl + 'input[type="text"]').length) {
                 jQuery(parentEl + 'input[type="text"]').each(function() {
                     var $self = jQuery(this);
@@ -75,11 +82,11 @@ function sendSearchRequest() {
                 });
 
                 if (textEl) {
-                    return {type: 'success', el: textEl}
+                    return {type: 'success', el: textEl};
                 }
-                return {type: 'success', el: jQuery(parentEl + 'input[type="text"]').first()}
+                return {type: 'success', el: jQuery(parentEl + 'input[type="text"]').first()};
             } else if (jQuery(parentEl + 'input').not('[type]').length) {
-                return {type: 'success', el: jQuery(parentEl + 'input').not('[type]').first()}
+                return {type: 'success', el: jQuery(parentEl + 'input').not('[type]').first()};
             } else {
                 return {type: 'fail', status: 'elnf'};
             }
@@ -94,7 +101,7 @@ function sendSearchRequest() {
         } else {
             // Try to get element without a form parent
             getElNoForm = getElement('');
-            if (getEl.type === 'success') {
+            if (getElNoForm.type === 'success') {
                 $el = getElNoForm.el;
                 $el.val(terms);
 
