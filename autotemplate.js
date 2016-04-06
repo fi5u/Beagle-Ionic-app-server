@@ -1,6 +1,6 @@
 var sys = require('system'),
     page = require('webpage').create(),
-    args = sys.args, //['', 'http://www.sdksj.com', 'abc', 'def']
+    args = sys.args,//['', 'http://int.debenhams.com/fi/shop/', 'abc', 'def'],
     url = {
         original: args[1],
         redirected: ''
@@ -10,6 +10,11 @@ var sys = require('system'),
         redirectCheck: false,
         searchSent: false,
         resultsReturned: false
+    },
+    savedResponse = {
+        status: '',
+        url: '',
+        title: ''
     };
 
 // Set useragent to iphone 6
@@ -97,7 +102,7 @@ function sendSearchRequest() {
         if (getEl.type === 'success') {
             $el = getEl.el;
             $el.val(terms);
-            $el.closest('form').submit();
+            $el.closest('form')[0].submit();
         } else {
             // Try to get element without a form parent
             getElNoForm = getElement('');
@@ -147,15 +152,47 @@ function urlContainsSearchResults() {
     return false;
 }
 
-function phantomExit(statusCode) {
-    var response = {
-        status: statusCode,
-        url: page.url,
-        title: page.title,
-        redirectedUrl: url.redirected
-    };
+function getRootUrl() {
+    var re = /^.*\/\/.*?\//i;
+    var str = url.redirected || url.original;
+    var m;
 
-    console.log(JSON.stringify(response, undefined, 0));
+    if ((m = re.exec(str)) !== null) {
+        if (m.index === re.lastIndex) {
+            re.lastIndex++;
+        }
+
+        return m[0];
+    }
+    return false;
+}
+
+function getPageTitle() {
+    var rootUrl = getRootUrl();
+    if (rootUrl) {
+        page.open(rootUrl, function(status) {
+            phantomExit('getRootTitle');
+        });
+    }
+}
+
+function phantomExit(statusCode) {
+    if (statusCode === 'success') {
+        savedResponse.title = page.title;
+        savedResponse.url = page.url;
+        getPageTitle();
+        return false;
+    }
+
+    if (statusCode === 'getRootTitle') {
+        savedResponse.status = 'success';
+    } else {
+        savedResponse.status = statusCode;
+        savedResponse.url = page.url;
+    }
+    savedResponse.title = page.title;
+
+    console.log(JSON.stringify(savedResponse, undefined, 0));
     phantom.exit(1);
 }
 
@@ -184,9 +221,7 @@ page.onLoadFinished = function() {
     if (stage.searchSent) {
         stage.resultsReturned = true;
     }
-
 };
-
 
 page.onError = function(msg, trace) {
     var msgStack = ['ERROR: ' + msg];
