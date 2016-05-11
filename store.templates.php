@@ -1,5 +1,4 @@
 <?php
-
 include_once 'store.connect.php';
 $document = get_document($collection, $data);
 $rtnArray = array();
